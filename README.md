@@ -8,15 +8,13 @@ Note: This project will be (eventually) united with project 4: [Advanced Lane Fi
 ### Work in Progress 7/1/2018
 
 [//]: # (Image References)
-[image1]: ./examples/car_not_car.png
-[image2]: ./examples/HOG_example.jpg
-[image3]: ./examples/sliding_windows.jpg
-[image4]: ./examples/sliding_window.jpg
-[image5]: ./examples/bboxes_and_heat.png
-[image6]: ./examples/labels_map.png
-[image7]: ./examples/output_bboxes.png
-[video1]: ./project_video.mp4
-
+[image1]: ./Figures/data_example.png
+[image11]: ./Figures/YCrCb.png
+[image12]: ./Figures/YCrCb_16x16.png
+[image13]: ./Figures/YCrCb_hist.png]
+[image14]: ./Figures/YCrCb_hog.png]
+[image2]: ./Figures/Detections.png
+[image3]: ./Figures/Heatmap.png
 ---
 
 In this project, vehicles are detected on a highway course based on computer vision and machine learning.
@@ -35,8 +33,8 @@ The classifier is trained based on this labeled data for [vehicle](https://s3.am
 The dataset could be further augmented with the recently released [Udacity labeled dataset](https://github.com/udacity/self-driving-car/tree/master/annotations) .
 
 Short summary of the data set
-| | |
-|:---:|:---|
+|Info| |
+|:---:|:---:|
 | vehicle images | 8792 |
 | non-vehicle images | 8968 |
 | image size | 64x64 |
@@ -55,20 +53,22 @@ Here is an example of one of each of the `vehicle` and `non-vehicle` classes:
 Before the feature extraction, the image are scaled to 0 to 1 if they are jpg files.
 Then they are converted to the YCrCb color space, where Y (luma) is representing the black-and-white image and the Cr and Cb channels represent "chroma" or color.
 The Y channel can be effectively used for color-independent gradients (here hog).
+![alt text][image11]
 
 #### Spatially binned colors `bin_spatial()`
 The images are spatially binned using `cv2.resize(<image>, <new_size>).ravel()` to conserve the shape of the vehicles while reducing the dimensionality.
+![alt text][image12]
 
 #### Histogram of color channels `color_hist()`
 The channels of the YCrCb image are converted independently into histograms using `np.histogram(<image_channel>)`. In this way the predominant color is included in the feature vector.
 That is beneficial as vehicles can have strong and homogeneous color/hue which does not appear otherwise. E.g. yellow car, black tires, ...
+![alt text][image13]
 
 #### Histogram of Oriented Gradients (HOG) `get_hog_features()`
 I then explored different color spaces and different `skimage.hog()` parameters (`orientations`, `pixels_per_cell`, and `cells_per_block`).
 I grabbed random images from each of the two classes and displayed them to get a feel for what the `skimage.hog()` output looks like.
 
-Here is an example using the `YCrCb` color space and HOG parameters of `orientations=8`, `pixels_per_cell=(8, 8)` and `cells_per_block=(2, 2)`:
-![alt text][image2]
+![alt text][image14]
 
 #### Final choice of parameters
 The full feature vector is extracted automatically for a single image `single_img_features(<image>)` or a list of images `extract_features(<image_list>). The user can set all parameters as options.
@@ -92,7 +92,7 @@ The features were then combined to a single feature vector which was normalised 
 
 ### Support vector classifier (SVC)
 The data was split into a training and test data set. Then a svc was trained.
-A grid search using kernel={"linear", "rbf"} and C={1, 10} showed the bes result with an accuracy of 99.6%.
+A grid search using kernel={"linear", "rbf"} and C={1, 10} showed the best result with an accuracy of 99.6%.
 Due to the long training time (>30min), the hyperparameters were tuned only a single time and then continuously applied.
 The training of a single, linear svm took about 10s and the accuracy on the test data set was > 97%.
 The trained classifier is used in the following for the vehicle tracking on a video stream.
@@ -100,7 +100,7 @@ The trained classifier is used in the following for the vehicle tracking on a vi
 ---
 
 ## 2. Vehicle recognition
-In order to detect vehicles in an image, the image is subsampled into smaller, overlapping snippets which are classified. A reach which was classified as vehicle by sufficiently many snippets will be marked as vehicle.
+In order to detect vehicles in an image, the image is sub-sampled into smaller, overlapping snippets which are classified. A reach which was classified as vehicle by sufficiently many snippets will be marked as vehicle.
 Since the recognition should be applied on a video stream, a focus on efficiency is made.
 
 ### Sliding window 
@@ -109,15 +109,14 @@ Then, the HOG features are calculated for the whole image, which will then be on
 The snippets are oriented at the original images used for classification. Hence their size will be scale * 64x64, where the scale is set by the user. In this way, several scales can be searched efficiently on the same.
 For every scale, a sliding window search is applied, where the snippet slides by `cells_per_step`
 
-Parameters
-|scales 		| 1.5, 1.75, 2|
-|cells per step | 2|
+| Parameter			| Value |
+|:-----------------:|:-----:|
+|scales 			| 1.5, 1.75, 2|
+|cells per step 	| 2|
 
-![alt text][image3]
+Here is the detection in a single image using three scales (three colors)
 
-Ultimately I searched on two scales using YCrCb 3-channel HOG features plus spatially binned color and histograms of color in the feature vector, which provided a nice result.  Here are some example images:
-
-![alt text][image4]
+![alt text][image2]
 
 ### Classification
 Every selected image snippet was then classified using the above trained SVC. In order to avoid false positive (detected cars in an empty snippet), a heatmap was created.
@@ -125,23 +124,17 @@ All pixel within a positive (true and false) window were added with 1 point to a
 That was done for all windows in the current image and the previous four images. Then a threshold was applied to remove false positives, which were usually not consistent over many windows and images.
 Using `scipy.ndimage.measurements.label()` new bounding boxes (one for each car) were drawn on the image.
 
-Parameters
+| Parameter				| Value |
+|:---------------------:|:-----:|
 | previous detections	| 4		|
 | threshold|			| 12 	|
 
+Here is the same frame and its corresponding heatmap:
 
-Here are six frames and their corresponding heatmaps:
-
-![alt text][image5]
-
-Here is the output of `scipy.ndimage.measurements.label()` on the integrated heatmap from all six frames:
-![alt text][image6]
-
-Here the resulting bounding boxes are drawn onto the last frame in the series:
-![alt text][image7]
+![alt text][image3]
 
 ### Result
-Here's a [link to my video result](./Videos/video1.mp4)
+The positive detection are then drawn on the images. Here is a [link to my video result](./Videos/video1_detected.mp4)
 
 ---
 

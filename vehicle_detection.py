@@ -52,9 +52,11 @@ hist_bins = 16    # Number of histogram bins
 spatial_feat = True # Spatial features on or off
 hist_feat = True # Histogram features on or off
 hog_feat = True # HOG features on or off
+
+# Parameters for sliding window search
 y_start_stop = [350, 650] # Min and max in y to search in slide_window()
 x_start_stop = [None, None]
-
+SCALES = [1.5, 1.75, 2.0]
 ###############################################################################
 # Train a classifier
 
@@ -65,6 +67,97 @@ car_folder = os.path.join(directory, 'vehicle_detection_data', 'vehicles')
 
 cars = glob.glob(car_folder + '/**/*.png', recursive=True)
 notcars = glob.glob(non_car_folder + '/**/*.png', recursive=True)
+
+
+#########
+# Play around with the features
+'''
+test_n = np.random.randint(0, 1000)
+test_car = mpimg.imread(cars[test_n])
+test_nocar = mpimg.imread(notcars[test_n])
+
+fig, axes = plt.subplots(1,2)
+axes[0].set_title('Vehicle')
+axes[0].imshow(test_car)
+axes[1].set_title('No vehicle')
+axes[1].imshow(test_nocar)
+
+test_car_c = convert_color_from_RGB(test_car, color_space)
+test_nocar_c = convert_color_from_RGB(test_nocar, color_space)
+
+def plot_channels(car, nocar):
+    fig, axes = plt.subplots(2,3)
+    axes = axes.ravel()
+    axes[0].set_title('Y (Vehicle)')
+    axes[1].set_title('Cr (Vehicle)')
+    axes[2].set_title('Cb (Vehicle)')
+    axes[0].imshow(car[:,:,0], cmap='Greys_r')
+    axes[1].imshow(car[:,:,1], cmap='Greys_r')
+    axes[2].imshow(car[:,:,2], cmap='Greys_r')
+    axes[3].set_title('Y (No vehicle)')
+    axes[4].set_title('Cr (No vehicle)')
+    axes[5].set_title('Cb (No vehicle)')
+    axes[3].imshow(nocar[:,:,0], cmap='Greys_r')
+    axes[4].imshow(nocar[:,:,1], cmap='Greys_r')
+    axes[5].imshow(nocar[:,:,2], cmap='Greys_r')
+    plt.tight_layout()
+
+plot_channels(test_car_c, test_nocar_c)
+
+test_car_s = bin_spatial(test_car_c, spatial_size, 'ALL').reshape(spatial_size[0],spatial_size[1],3)
+test_nocar_s = bin_spatial(test_nocar_c, spatial_size, 'ALL').reshape(spatial_size[0],spatial_size[1],3)
+
+plot_channels(test_car_s, test_nocar_s)
+
+###
+bins = np.linspace(0,1,hist_bins, endpoint=True)
+fig, axes = plt.subplots(2,3)
+axes=axes.ravel()
+axes[0].set_title('Y (Vehicle)')
+axes[1].set_title('Cr (Vehicle)')
+axes[2].set_title('Cb (Vehicle)')
+axes[3].set_title('Y (No vehicle)')
+axes[4].set_title('Cr (No vehicle)')
+axes[5].set_title('Cb (No vehicle)')
+axes[0].hist(test_car_c[:,:,0].ravel(), bins=bins)
+axes[1].hist(test_car_c[:,:,1].ravel(), bins=bins)
+axes[2].hist(test_car_c[:,:,2].ravel(), bins=bins)
+axes[3].hist(test_nocar_c[:,:,0].ravel(), bins=bins)
+axes[4].hist(test_nocar_c[:,:,1].ravel(), bins=bins)
+axes[5].hist(test_nocar_c[:,:,2].ravel(), bins=bins)
+
+### HOG
+feat0, hog0 = get_hog_features(test_car_c[:,:,0], orient, pix_per_cell, cell_per_block, 
+                        vis=True, feature_vec=True)
+feat1, hog1 = get_hog_features(test_car_c[:,:,1], orient, pix_per_cell, cell_per_block, 
+                        vis=True, feature_vec=True)
+feat2, hog2 = get_hog_features(test_car_c[:,:,2], orient, pix_per_cell, cell_per_block, 
+                        vis=True, feature_vec=True)
+feat0n, hog0n = get_hog_features(test_nocar_c[:,:,0], orient, pix_per_cell, cell_per_block, 
+                        vis=True, feature_vec=True)
+feat1n, hog1n = get_hog_features(test_nocar_c[:,:,1], orient, pix_per_cell, cell_per_block, 
+                        vis=True, feature_vec=True)
+feat2n, hog2n = get_hog_features(test_nocar_c[:,:,2], orient, pix_per_cell, cell_per_block, 
+                        vis=True, feature_vec=True)
+plot_hog = True
+if plot_hog:
+    fig, axes = plt.subplots(2,3)
+    axes = axes.ravel()
+    axes[0].set_title('Y (Vehicle)')
+    axes[1].set_title('Cr (Vehicle)')
+    axes[2].set_title('Cb (Vehicle)')
+    axes[0].imshow(hog0, cmap='Greys_r')
+    axes[1].imshow(hog1, cmap='Greys_r')
+    axes[2].imshow(hog2, cmap='Greys_r')
+    axes[3].set_title('Y (No vehicle)')
+    axes[4].set_title('Cr (No vehicle)')
+    axes[5].set_title('Cb (No vehicle)')
+    axes[3].imshow(hog0n, cmap='Greys_r')
+    axes[4].imshow(hog1n, cmap='Greys_r')
+    axes[5].imshow(hog2n, cmap='Greys_r')
+    plt.tight_layout()
+'''
+#########
 
 if reduced_sample_size:
     sample_size = 2000
@@ -106,25 +199,36 @@ X_train, X_test, y_train, y_test = train_test_split(
 # Use a linear SVC (support vector classifier)
 #svc = LinearSVC()
 # Train the SVC
-t1 = time.time()
-parameters = {'kernel':('linear', 'rbf'), 'C':[1, 10]}
-svr = SVC()
-clf = GridSearchCV(svr, parameters)
-clf.fit(X_train, y_train)
-#svc.fit(X_train, y_train)
-svc = clf
-t2 = time.time()
-print('SVC Classifier')
-print('------------------')
-print('Training time {:.2f} s'.format((t2-t1)))
-print('Hyperparameters : ', clf.best_params_) # rbf, 10 ... 99.6%
+grid = False
+if grid:   
+    t1 = time.time()
+    parameters = {'kernel':('linear', 'rbf'), 'C':[1, 10]}
+    svc = SVC()
+    clf = GridSearchCV(svc, parameters)
+    clf.fit(X_train, y_train)
+    #svc.fit(X_train, y_train)
+    svc = clf
+    t2 = time.time()
+    print('SVC Classifier')
+    print('------------------')
+    print('Training time {:.2f} s'.format((t2-t1)))
+    print('Test Accuracy : ', svc.score(X_test, y_test))
+    print('Hyperparameters : ', clf.best_params_) # rbf, 10 ... 99.6%
+
+else:
+    t1 = time.time()
+    svc = SVC(kernel='rbf', C=10)#'rbf'
+    svc.fit(X_train, y_train)
+    t2 = time.time()
+    print('SVC Classifier')
+    print('------------------')
+    print('Training time {:.2f} s'.format((t2-t1)))
+    print('Test Accuracy : ', svc.score(X_test, y_test))
 
 # Check classifier
 print('Using hog with:',orient,'orientations',pix_per_cell,
-    'pixels per cell and', cell_per_block,'cells per block')
-print('Feature vector length:', len(X_train[0]))
-print('Test Accuracy : ', svc.score(X_test, y_test))
-
+        'pixels per cell and', cell_per_block,'cells per block')
+print('Feature vector length:', len(X_train[0]))    
 ###############################################################################
 # Use the classifier on an image
 
@@ -159,11 +263,12 @@ window_img = draw_boxes(draw_image, hot_windows, color=(0, 0, 255), thick=6)
 plt.figure()
 plt.imshow(window_img)
 '''
+'''
 ### 1+2) Alternative: Calculate hog for whole image and resample
 t1 = time.time()
 hot_windows = []
 detections = []
-for scale in [1.6, 1.8, 2]:    
+for scale in SCALES:    
     img_d, win_d = find_cars(images[7], svc, X_scaler, scale=scale,
                   x_start_stop=x_start_stop, y_start_stop=y_start_stop,
                   orient=orient, pix_per_cell=pix_per_cell, cell_per_block=cell_per_block,
@@ -186,7 +291,7 @@ plt.imshow(img_detected)
 ### 3) Create heatmap
 heat = np.zeros_like(image[:,:,0]).astype(np.float)
 heat = add_heat(heat, hot_windows)
-heat = apply_threshold(heat, 4)
+heat = apply_threshold(heat, 1)
 
 # Visualize the heatmap when displaying    
 heatmap = np.clip(heat, 0, 255)
@@ -207,11 +312,7 @@ fig.tight_layout()
 
 ### 4) Create heatmap over k images
 ### 5) Return bounding boxes of detected cars
-
-
-###############################################################################
-# Define a single function that can extract features using hog sub-sampling and make predictions
-
+'''
 
 ###############################################################################
 # Apply the classifier to a videostream 
@@ -256,7 +357,7 @@ empty = np.zeros((shape[0], shape[1])).astype(np.float)
 prev = [empty, empty, empty, empty, empty]#, None, None, None]
 def detect_cars(image):
     ''' input image between 0 and 255'''
-    img, heat = pipeline(image, scales=[1.5, 1.75, 2.0], heat_threshold=1)
+    img, heat = pipeline(image, scales=SCALES, heat_threshold=1)
 
     prev.append(heat)
     prev.pop(0)

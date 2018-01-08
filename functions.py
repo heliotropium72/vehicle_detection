@@ -41,6 +41,7 @@ def draw_labeled_bboxes(img, labels, color=(0, 0, 255), thick=6):
     img = draw_boxes(img, bboxes, color, thick)
     return img
 
+'''
 def convert_color(img, conv='RGB2YCrCb'):
     if conv == 'RGB2YCrCb':
         return cv2.cvtColor(img, cv2.COLOR_RGB2YCrCb)
@@ -48,6 +49,7 @@ def convert_color(img, conv='RGB2YCrCb'):
         return cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
     if conv == 'RGB2LUV':
         return cv2.cvtColor(img, cv2.COLOR_RGB2LUV)
+'''
 
 def convert_color_from_RGB(image, color_space='RGB'):
     if color_space == 'RGB':
@@ -89,15 +91,17 @@ def get_hog_features(img, orient, pix_per_cell, cell_per_block,
                        visualise=vis, feature_vector=feature_vec)
         return features
  
-def bin_spatial(img, size=(32, 32)):
+def bin_spatial(img, size=(32, 32), channel=0):
     ''' Extraction of binned color features '''
-    # Use cv2.resize().ravel() to create the feature vector
-    features = cv2.resize(img, size).ravel() 
+    if channel=='ALL':
+        features = cv2.resize(img, size).ravel()
+    else:
+        features = cv2.resize(img[:,:,channel], size).ravel() 
     return features
 
-def color_hist(img, nbins=32, bins_range=(0, 256)):
+def color_hist(img, nbins=32, bins_range=(0, 1)):
     ''' Extraction of color histogram features
-    NEED TO CHANGE bins_range if reading .png files with mpimg! '''
+    jgp:bins_range=(0,256)'''
     # Compute the histogram of the color channels separately
     channel1_hist = np.histogram(img[:,:,0], bins=nbins, range=bins_range)
     channel2_hist = np.histogram(img[:,:,1], bins=nbins, range=bins_range)
