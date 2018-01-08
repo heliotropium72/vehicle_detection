@@ -2,7 +2,7 @@
 [![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
 
 ### Term 1, Project 5: Vehicle Detection
-### Keywords: Computer Vision, Machine Learning, ...
+### Keywords: Image Classification, Computer Vision, Machine Learning
 Note: This project will be (eventually) united with project 4: [Advanced Lane Finding](https://github.com/heliotropium72/lane_detection.git) and is (already now) largely build on this project.
 
 ### Work in Progress 7/1/2018
@@ -20,35 +20,32 @@ Note: This project will be (eventually) united with project 4: [Advanced Lane Fi
 ---
 
 In this project, vehicles are detected on a highway course based on computer vision and machine learning.
+The project is separated in two parts. First, an image classifier is trained recognizing vehicles in a 64x64 image. Then, the classifier is used to detect and track vehicles on a video stream.
 Checkout the [project rubric](https://review.udacity.com/#!/rubrics/513/view) for more details.
 
-The Project
 ---
 
-The goals / steps of this project are the following:
-
-* Perform a Histogram of Oriented Gradients (HOG) feature extraction on a labeled training set of images and train a classifier Linear SVM classifier
-* Optionally, you can also apply a color transform and append binned color features, as well as histograms of color, to your HOG feature vector. 
-* Note: for those first two steps don't forget to normalize your features and randomize a selection for training and testing.
-* Implement a sliding-window technique and use your trained classifier to search for vehicles in images.
-* Run your pipeline on a video stream (start with the test_video.mp4 and later implement on full project_video.mp4) and create a heat map of recurring detections frame by frame to reject outliers and follow detected vehicles.
-* Estimate a bounding box for vehicles detected.
-
-  
-
-**If you're feeling ambitious** (also totally optional though), don't stop there!  We encourage you to go out and take video of your own, and show us how you would implement this project on a new video!
-
----
-## Image Classifier (Vehicle/ No-vehicle)
-As a first step an image classifier, which is able to predict whether an image snipplet contains a vehicle, is trained.
+## 1. Image Classifier (Vehicle/ No-vehicle)
+As a first step an image classifier, which is able to predict whether an image snippet contains a vehicle, is trained.
 
 ### Data set
-Here are links to the labeled data for [vehicle](https://s3.amazonaws.com/udacity-sdc/Vehicle_Tracking/vehicles.zip) and
-[non-vehicle](https://s3.amazonaws.com/udacity-sdc/Vehicle_Tracking/non-vehicles.zip) examples to train your classifier. 
-These example images come from a combination of the [GTI vehicle image database](http://www.gti.ssr.upm.es/data/Vehicle_database.html), the [KITTI vision benchmark suite](http://www.cvlibs.net/datasets/kitti/),
-and examples extracted from the project video itself. The dataset could be further augmented with the recently released [Udacity labeled dataset](https://github.com/udacity/self-driving-car/tree/master/annotations) .
+The classifier is trained based on this labeled data for [vehicle](https://s3.amazonaws.com/udacity-sdc/Vehicle_Tracking/vehicles.zip) and
+[non-vehicle](https://s3.amazonaws.com/udacity-sdc/Vehicle_Tracking/non-vehicles.zip) examples. These example images come from a combination of the
+[GTI vehicle image database](http://www.gti.ssr.upm.es/data/Vehicle_database.html), the [KITTI vision benchmark suite](http://www.cvlibs.net/datasets/kitti/), and examples extracted from the project video itself.
+The dataset could be further augmented with the recently released [Udacity labeled dataset](https://github.com/udacity/self-driving-car/tree/master/annotations) .
 
-The data set contains 8792 images of vehicles and 8968 images of non-vehicles. The images are in RGB color space, 64x64 pixel large and in the png format.
+Short summary of the data set
+| | |
+|:---:|:---|
+| vehicle images | 8792 |
+| non-vehicle images | 8968 |
+| image size | 64x64 |
+| file format | png |
+| color space* | RGB |
+| scale* | 0 to 1 |
+
+*when read-in with `matplotlib`
+
 
 Here is an example of one of each of the `vehicle` and `non-vehicle` classes:
 
@@ -59,31 +56,62 @@ Before the feature extraction, the image are scaled to 0 to 1 if they are jpg fi
 Then they are converted to the YCrCb color space, where Y (luma) is representing the black-and-white image and the Cr and Cb channels represent "chroma" or color.
 The Y channel can be effectively used for color-independent gradients (here hog).
 
-#### Spatially binned colors
---> overall spatial orientation
-#### Color histograms
---> overall color
+#### Spatially binned colors `bin_spatial()`
+The images are spatially binned using `cv2.resize(<image>, <new_size>).ravel()` to conserve the shape of the vehicles while reducing the dimensionality.
 
-#### Histogram of Oriented Gradients (HOG)
+#### Histogram of color channels `color_hist()`
+The channels of the YCrCb image are converted independently into histograms using `np.histogram(<image_channel>)`. In this way the predominant color is included in the feature vector.
+That is beneficial as vehicles can have strong and homogeneous color/hue which does not appear otherwise. E.g. yellow car, black tires, ...
+
+#### Histogram of Oriented Gradients (HOG) `get_hog_features()`
 I then explored different color spaces and different `skimage.hog()` parameters (`orientations`, `pixels_per_cell`, and `cells_per_block`).
 I grabbed random images from each of the two classes and displayed them to get a feel for what the `skimage.hog()` output looks like.
 
 Here is an example using the `YCrCb` color space and HOG parameters of `orientations=8`, `pixels_per_cell=(8, 8)` and `cells_per_block=(2, 2)`:
 ![alt text][image2]
 
+#### Final choice of parameters
+The full feature vector is extracted automatically for a single image `single_img_features(<image>)` or a list of images `extract_features(<image_list>). The user can set all parameters as options.
+Also the different features (spatial, color and HOG) can be (de-)activated using a flag. Empirically, the following parameters showed the best result for the project
+
+| Parameter 		| Value |
+|:-----------------:|:-----:|
+| Color space 		| YCrCb |
+| Spatial feature 	| yes |
+| Spatial size 		| 16x16 |
+| Color feature 	| yes |
+| Histogram bins 	| 16 |
+| HOG feature 		| yes |
+| HOG orientations 	| 9 |
+| HOG pixels per cell | 8 |
+| HOG cells per block | 2 |
+| HOG image channel | 0 (Y) |
+
 #### Normalisation
 The features were then combined to a single feature vector which was normalised using `sklearn.StandardScaler`
 
 ### Support vector classifier (SVC)
 The data was split into a training and test data set. Then a svc was trained.
-Training took about 10s and the accuracy on the test data set was > 97%.
+A grid search using kernel={"linear", "rbf"} and C={1, 10} showed the bes result with an accuracy of 99.6%.
+Due to the long training time (>30min), the hyperparameters were tuned only a single time and then continuously applied.
+The training of a single, linear svm took about 10s and the accuracy on the test data set was > 97%.
 The trained classifier is used in the following for the vehicle tracking on a video stream.
 
 ---
-## Vehicle recognition
+
+## 2. Vehicle recognition
+In order to detect vehicles in an image, the image is subsampled into smaller, overlapping snippets which are classified. A reach which was classified as vehicle by sufficiently many snippets will be marked as vehicle.
+Since the recognition should be applied on a video stream, a focus on efficiency is made.
 
 ### Sliding window 
-I decided to search random window positions at random scales all over the image and came up with this (ok just kidding I didn't actually ;):
+First, the image was cut to the area in which vehicles are actually present by using the `x_start_stop` and `y_start_stop` parameters. In this way the sky was cut away leading to a faster processing.
+Then, the HOG features are calculated for the whole image, which will then be only re-sampled.
+The snippets are oriented at the original images used for classification. Hence their size will be scale * 64x64, where the scale is set by the user. In this way, several scales can be searched efficiently on the same.
+For every scale, a sliding window search is applied, where the snippet slides by `cells_per_step`
+
+Parameters
+|scales 		| 1.5, 1.75, 2|
+|cells per step | 2|
 
 ![alt text][image3]
 
@@ -94,24 +122,26 @@ Ultimately I searched on two scales using YCrCb 3-channel HOG features plus spat
 ### Classification
 Every selected image snippet was then classified using the above trained SVC. In order to avoid false positive (detected cars in an empty snippet), a heatmap was created.
 All pixel within a positive (true and false) window were added with 1 point to a heatmap.
-That was done for all windows in the current image and the previous two images. Then a threshold was applied to remove false positives, which were usually not consistent over many windows and images.
+That was done for all windows in the current image and the previous four images. Then a threshold was applied to remove false positives, which were usually not consistent over many windows and images.
 Using `scipy.ndimage.measurements.label()` new bounding boxes (one for each car) were drawn on the image.
 
----
+Parameters
+| previous detections	| 4		|
+| threshold|			| 12 	|
 
-## Video Implementation
 
-Here's a [link to my video result](./Videos/video1.mp4)
-
-### Here are six frames and their corresponding heatmaps:
+Here are six frames and their corresponding heatmaps:
 
 ![alt text][image5]
 
-### Here is the output of `scipy.ndimage.measurements.label()` on the integrated heatmap from all six frames:
+Here is the output of `scipy.ndimage.measurements.label()` on the integrated heatmap from all six frames:
 ![alt text][image6]
 
-### Here the resulting bounding boxes are drawn onto the last frame in the series:
+Here the resulting bounding boxes are drawn onto the last frame in the series:
 ![alt text][image7]
+
+### Result
+Here's a [link to my video result](./Videos/video1.mp4)
 
 ---
 

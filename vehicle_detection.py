@@ -15,8 +15,8 @@ import copy
 import time
 
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-from sklearn.svm import LinearSVC
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.svm import LinearSVC, SVC
 from scipy.ndimage.measurements import label
 
 
@@ -104,14 +104,20 @@ X_train, X_test, y_train, y_test = train_test_split(
 
 ### 6) Train classifier
 # Use a linear SVC (support vector classifier)
-svc = LinearSVC()
+#svc = LinearSVC()
 # Train the SVC
 t1 = time.time()
-svc.fit(X_train, y_train)
+parameters = {'kernel':('linear', 'rbf'), 'C':[1, 10]}
+svr = SVC()
+clf = GridSearchCV(svr, parameters)
+clf.fit(X_train, y_train)
+#svc.fit(X_train, y_train)
+svc = clf
 t2 = time.time()
 print('SVC Classifier')
 print('------------------')
 print('Training time {:.2f} s'.format((t2-t1)))
+print('Hyperparameters : ', clf.best_params_) # rbf, 10 ... 99.6%
 
 # Check classifier
 print('Using hog with:',orient,'orientations',pix_per_cell,
@@ -249,13 +255,13 @@ shape = images[0].shape
 empty = np.zeros((shape[0], shape[1])).astype(np.float)   
 prev = [empty, empty, empty, empty, empty]#, None, None, None]
 def detect_cars(image):
-    print(image.max())
+    ''' input image between 0 and 255'''
     img, heat = pipeline(image, scales=[1.5, 1.75, 2.0], heat_threshold=1)
 
     prev.append(heat)
     prev.pop(0)
     heat_summed = np.array(prev).sum(axis=0)
-    heat_summed = apply_threshold(heat_summed, threshold=8)
+    heat_summed = apply_threshold(heat_summed, threshold=12)
     heatmap = np.clip(heat_summed, 0, 255)
     # Find final boxes from heatmap using label function
     labels = label(heatmap)
@@ -263,8 +269,13 @@ def detect_cars(image):
 
     return draw_img
 
-import sys
-sys.exit()
+#import sys
+#sys.exit()
+
+video0_output = 'Videos/video0_detected.mp4'
+clip0 = VideoFileClip("../lane_detection_video/video0.mp4")
+video0 = clip0.fl_image(detect_cars)
+video0.write_videofile(video0_output, audio=False)
 
 video1_output = 'Videos/video1_detected.mp4'
 clip1 = VideoFileClip("../lane_detection_video/video1.mp4")
