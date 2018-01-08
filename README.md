@@ -5,9 +5,8 @@
 ### Keywords: Image Classification, Computer Vision, Machine Learning
 Note: This project will be (eventually) united with project 4: [Advanced Lane Finding](https://github.com/heliotropium72/lane_detection.git) and is (already now) largely build on this project.
 
-### Work in Progress 7/1/2018
-
 [//]: # (Image References)
+
 [image1]: ./Figures/data_example.png
 [image11]: ./Figures/YCrCb.png
 [image12]: ./Figures/YCrCb_16x16.png
@@ -33,7 +32,8 @@ The classifier is trained based on this labeled data for [vehicle](https://s3.am
 The dataset could be further augmented with the recently released [Udacity labeled dataset](https://github.com/udacity/self-driving-car/tree/master/annotations) .
 
 Short summary of the data set
-|Info| |
+
+|Info| Value|
 |:---:|:---:|
 | vehicle images | 8792 |
 | non-vehicle images | 8968 |
@@ -127,7 +127,7 @@ Using `scipy.ndimage.measurements.label()` new bounding boxes (one for each car)
 | Parameter				| Value |
 |:---------------------:|:-----:|
 | previous detections	| 4		|
-| threshold|			| 12 	|
+| threshold				| 12 	|
 
 Here is the same frame and its corresponding heatmap:
 
