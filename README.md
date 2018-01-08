@@ -7,13 +7,14 @@ Note: This project will be (eventually) united with project 4: [Advanced Lane Fi
 
 [//]: # (Image References)
 
-[image1]: ./Figures/data_example.png
-[image11]: ./Figures/YCrCb.png
-[image12]: ./Figures/YCrCb_16x16.png
-[image13]: ./Figures/YCrCb_hist.png]
-[image14]: ./Figures/YCrCb_hog.png]
-[image2]: ./Figures/Detections.png
-[image3]: ./Figures/Heatmap.png
+[image1]: ./Figures/data_example.png "a"
+[image11]: ./Figures/YCrCb.png "b"
+[image12]: ./Figures/YCrCb_16x16.png "c2"
+[image13]: ./Figures/YCrCb_hist.png] "c2"
+[image14]: ./Figures/YCrCb_hog.png] "dd"
+[image2]: ./Figures/Detections.png "false"
+[image3]: ./Figures/Heatmap.png "d"
+
 ---
 
 In this project, vehicles are detected on a highway course based on computer vision and machine learning.
