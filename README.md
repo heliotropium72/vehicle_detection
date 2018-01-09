@@ -7,13 +7,13 @@ Note: This project will be (eventually) united with project 4: [Advanced Lane Fi
 
 [//]: # (Image References)
 
-[image1]: ./Figures/data_example.png "a"
-[image11]: ./Figures/YCrCb.png "b"
-[image12]: ./Figures/YCrCb_16x16.png "c2"
-[image13]: ./Figures/YCrCb_hist.png] "c2"
-[image14]: ./Figures/YCrCb_hog.png] "dd"
-[image2]: ./Figures/Detections.png "false"
-[image3]: ./Figures/Heatmap.png "d"
+[image1]: ./Figures/data_example.png "Example data"
+[image11]: ./Figures/YCrCb.png "Color space YCrCb"
+[image12]: ./Figures/YCrCb_16x16.png "Spatially binned"
+[image13]: ./Figures/YCrCb_hist.png "Color histogram"
+[imageHOG]: ./Figures/YCrCb_hog.png "HOG features"
+[image2]: ./Figures/Detections.png "Detection"
+[image3]: ./Figures/Heatmap.png "Heatmap"
 
 ---
 
@@ -72,7 +72,7 @@ That is beneficial as vehicles can have strong and homogeneous color/hue which d
 I then explored different color spaces and different `skimage.hog()` parameters (`orientations`, `pixels_per_cell`, and `cells_per_block`).
 I grabbed random images from each of the two classes and displayed them to get a feel for what the `skimage.hog()` output looks like.
 
-![alt text][image14]
+![alt text][imageHOG]
 
 #### Final choice of parameters
 The full feature vector is extracted automatically for a single image `single_img_features(<image>)` or a list of images `extract_features(<image_list>). The user can set all parameters as options.
