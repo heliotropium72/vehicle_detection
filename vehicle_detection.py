@@ -18,20 +18,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.svm import LinearSVC, SVC
 from scipy.ndimage.measurements import label
-
-
 from moviepy.editor import VideoFileClip
-
-'''
-#importing own functions
-try:
-    DIST = dist.mtx
-    MTX = dist.mtx
-except:
-    import undistort as dist
-    DIST = dist.mtx
-    MTX = dist.mtx
-'''    
     
 from functions import *   
     
@@ -43,7 +30,7 @@ from functions import *
 reduced_sample_size = False
 
 color_space = 'YCrCb' # Can be RGB, HSV, LUV, HLS, YUV, YCrCb
-orient = 9  # HOG orientations
+orient = 8  # HOG orientations
 pix_per_cell = 8 # HOG pixels per cell
 cell_per_block = 2 # HOG cells per block
 hog_channel = 0 # Can be 0, 1, 2, or "ALL"
@@ -54,9 +41,9 @@ hist_feat = True # Histogram features on or off
 hog_feat = True # HOG features on or off
 
 # Parameters for sliding window search
-y_start_stop = [350, 650] # Min and max in y to search in slide_window()
+y_start_stop = [400, 600] # Min and max in y to search in slide_window()
 x_start_stop = [None, None]
-SCALES = [1.5, 1.75, 2.0]
+SCALES = [1.5, 1.75]#, 2.0]
 ###############################################################################
 # Train a classifier
 
@@ -195,6 +182,8 @@ rand_state = np.random.randint(0, 100)
 X_train, X_test, y_train, y_test = train_test_split(
     scaled_X, y, test_size=0.2, random_state=rand_state)
 
+print('Data ready for training.')
+
 ### 6) Train classifier
 # Use a linear SVC (support vector classifier)
 #svc = LinearSVC()
@@ -228,7 +217,23 @@ else:
 # Check classifier
 print('Using hog with:',orient,'orientations',pix_per_cell,
         'pixels per cell and', cell_per_block,'cells per block')
-print('Feature vector length:', len(X_train[0]))    
+print('Feature vector length:', len(X_train[0]))
+
+### Pickle the classifier
+import pickle
+classifier_pkl_filename = 'scv.pkl'
+# Open the file to save as pkl file
+classifier_pkl = open(classifier_pkl_filename, 'wb')
+pickle.dump(svc, classifier_pkl)
+# Close the pickle instances
+classifier_pkl.close()
+scaler_pkl_filename = 'scaler.pkl'
+scaler_pkl = open(scaler_pkl_filename, 'wb')
+pickle.dump(scaler, scaler_pkl)
+
+### Tidy uo the memory
+del(X_train, X_test, y_train, y_test, car_features, notcar_features)
+
 ###############################################################################
 # Use the classifier on an image
 
@@ -239,11 +244,12 @@ images = []
 for fname in image_files:
     images.append(mpimg.imread(os.path.join(fname)))
 
+'''
 image = images[7]
 image = image.astype(np.float32)/255 # Difference between png and jpg
 draw_image = np.copy(image)
 
-'''
+
 t1 = time.time()
 ### 1) Separate the image into sliding windows
 windows = slide_window(image, x_start_stop=[None, None], y_start_stop=y_start_stop, 
@@ -317,7 +323,7 @@ fig.tight_layout()
 ###############################################################################
 # Apply the classifier to a videostream 
 
-def pipeline(image, scales=[1, 1.5, 2], heat_threshold=1):
+def pipeline(image, scales=[1, 1.5, 2], heat_threshold=1, draw=False):
     '''
     image : np.array
         Image from video stream (RGB & *.jpg)
@@ -336,33 +342,35 @@ def pipeline(image, scales=[1, 1.5, 2], heat_threshold=1):
                       orient=orient, pix_per_cell=pix_per_cell, cell_per_block=cell_per_block,
                       spatial_size=spatial_size, hist_bins=hist_bins)
         hot_windows.extend(win_d)
-    img_detected = draw_boxes(np.copy(image), hot_windows, color=(0,255,0))    
-            
-    ### 3) Create heatmap
+
+    # Create heatmap
     heat = np.zeros_like(image[:,:,0]).astype(np.float)
     heat = add_heat(heat, hot_windows)
     heat = apply_threshold(heat, heat_threshold)
     
-    # Visualize the heatmap when displaying    
-    heatmap = np.clip(heat, 0, 255)
-    
-    # Find final boxes from heatmap using label function
-    labels = label(heatmap)
-    draw_img = draw_labeled_bboxes(img_detected, labels, color=(255,0,0))
-
-    return draw_img, heat
+    if draw:
+        img_detected = draw_boxes(np.copy(image), hot_windows, color=(0,255,0))
+        # Visualize the heatmap when displaying    
+        heatmap = np.clip(heat, 0, 255)
+        
+        # Find final boxes from heatmap using label function
+        labels = label(heatmap)
+        draw_img = draw_labeled_bboxes(img_detected, labels, color=(255,0,0))
+        return draw_img, heat
+    else:
+        return heat
 
 shape = images[0].shape
 empty = np.zeros((shape[0], shape[1])).astype(np.float)   
 prev = [empty, empty, empty, empty, empty]#, None, None, None]
 def detect_cars(image):
     ''' input image between 0 and 255'''
-    img, heat = pipeline(image, scales=SCALES, heat_threshold=1)
+    heat = pipeline(image, scales=SCALES, heat_threshold=1)
 
     prev.append(heat)
     prev.pop(0)
     heat_summed = np.array(prev).sum(axis=0)
-    heat_summed = apply_threshold(heat_summed, threshold=12)
+    heat_summed = apply_threshold(heat_summed, threshold=8)
     heatmap = np.clip(heat_summed, 0, 255)
     # Find final boxes from heatmap using label function
     labels = label(heatmap)
@@ -377,6 +385,9 @@ video0_output = 'Videos/video0_detected.mp4'
 clip0 = VideoFileClip("../lane_detection_video/video0.mp4")
 video0 = clip0.fl_image(detect_cars)
 video0.write_videofile(video0_output, audio=False)
+
+import sys
+sys.exit()
 
 video1_output = 'Videos/video1_detected.mp4'
 clip1 = VideoFileClip("../lane_detection_video/video1.mp4")

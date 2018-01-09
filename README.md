@@ -54,15 +54,18 @@ Here is an example of one of each of the `vehicle` and `non-vehicle` classes:
 Before the feature extraction, the image are scaled to 0 to 1 if they are jpg files.
 Then they are converted to the YCrCb color space, where Y (luma) is representing the black-and-white image and the Cr and Cb channels represent "chroma" or color.
 The Y channel can be effectively used for color-independent gradients (here hog).
+
 ![alt text][image11]
 
 #### Spatially binned colors `bin_spatial()`
 The images are spatially binned using `cv2.resize(<image>, <new_size>).ravel()` to conserve the shape of the vehicles while reducing the dimensionality.
+
 ![alt text][image12]
 
 #### Histogram of color channels `color_hist()`
 The channels of the YCrCb image are converted independently into histograms using `np.histogram(<image_channel>)`. In this way the predominant color is included in the feature vector.
 That is beneficial as vehicles can have strong and homogeneous color/hue which does not appear otherwise. E.g. yellow car, black tires, ...
+
 ![alt text][image13]
 
 #### Histogram of Oriented Gradients (HOG) `get_hog_features()`
@@ -112,7 +115,7 @@ For every scale, a sliding window search is applied, where the snippet slides by
 
 | Parameter			| Value |
 |:-----------------:|:-----:|
-|scales 			| 1.5, 1.75, 2|
+|scales 			| 1.5, 1.75 (2)|
 |cells per step 	| 2|
 
 Here is the detection in a single image using three scales (three colors)
@@ -128,7 +131,7 @@ Using `scipy.ndimage.measurements.label()` new bounding boxes (one for each car)
 | Parameter				| Value |
 |:---------------------:|:-----:|
 | previous detections	| 4		|
-| threshold				| 12 	|
+| threshold				| 8 (12) 	|
 
 Here is the same frame and its corresponding heatmap:
 
@@ -144,6 +147,9 @@ The positive detection are then drawn on the images. Here is a [link to my video
 #### Problems
 - Separation of cars: When two vehicles are close to each other, they will be detected as a single vehicle
 - False positive: The pipeline does not reject all outliers
+- The HOG calculation for the whole image runs incredible slow (10-15s per image). Reducing to only two scales and a narrow image stripe (y between 400 and 600) fastened the detection to ca. 5s per image but runs on the risk of missing vehicles now.
+In facts the project videos misses the car now in several occations, re-running the video with other setting (lower threshold, and larger image stripe) would improve the detection, but the processing time is too long to repeat it.
+On slack and [stackoverflow](https://stackoverflow.com/questions/28390614/opencv-hogdescripter-python), it is suggested to run the OpenCV implementation rather than the scikit-image version as it would run 10x faster.
 
 #### Improvements
 - Image classification: The image classification could made more robust by performing a grid search tuning through a variety of hyper-parameters and also different classifier (e.g decision tree)
